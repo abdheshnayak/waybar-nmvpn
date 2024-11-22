@@ -11,64 +11,59 @@ import (
 )
 
 func loop(interval time.Duration) {
-	wb := waybar.NewUpdater()
+	names := []string{}
+	status := waybar.Status{
+		Text: "",
+	}
 
-	for true {
-		names := []string{}
-		status := waybar.Status{
-			Text: "",
-		}
-
-		vpns, err := nmvpn.GetVPNs()
-		if err == nil && len(vpns) > 0 {
-			active := false
-			for _, v := range vpns {
-				if v.Active {
-					active = true
-					break
-				}
-			}
-			if active {
-				status.Alt = "connected"
-				status.Class = []string{"connected"}
-			} else {
+	vpns, err := nmvpn.GetVPNs()
+	if err == nil && len(vpns) > 0 {
+		active := false
+		for _, v := range vpns {
+			if v.Active {
+				active = true
 				break
 			}
-
-			status.Tooltip = ""
-			for _, v := range vpns {
-				if !v.Active {
-					continue
-				}
-
-				names = append(names, v.Name)
-
-				if status.Tooltip != "" {
-					status.Tooltip += "\n"
-				}
-				state := "down"
-				if v.Active {
-					state = "up"
-				}
-				status.Tooltip += fmt.Sprintf("%s: %s", v.Name, state)
-			}
-		} else if err != nil {
-			status.Alt = "error"
-			status.Class = []string{"error"}
-			status.Tooltip = fmt.Sprintf("Error fetching VPN information: %v", err)
+		}
+		if active {
+			status.Alt = "connected"
+			status.Class = []string{"connected"}
 		} else {
-			status.Alt = "none"
-			status.Class = []string{"unconfigured"}
-			status.Tooltip = "No VPN connections configured"
+			return
 		}
 
-		status.Text = strings.Join(names, " | ")
+		status.Tooltip = ""
+		for _, v := range vpns {
+			if !v.Active {
+				continue
+			}
 
-		wb.Status <- &status
-		time.Sleep(interval)
+			names = append(names, v.Name)
+
+			if status.Tooltip != "" {
+				status.Tooltip += "\n"
+			}
+			state := "down"
+			if v.Active {
+				state = "up"
+			}
+			status.Tooltip += fmt.Sprintf("%s: %s", v.Name, state)
+		}
+	} else if err != nil {
+		status.Alt = "error"
+		status.Class = []string{"error"}
+		status.Tooltip = fmt.Sprintf("Error fetching VPN information: %v", err)
+	} else {
+		status.Alt = "none"
+		status.Class = []string{"unconfigured"}
+		status.Tooltip = "No VPN connections configured"
 	}
+
+	status.Text = strings.Join(names, " | ")
+
+	fmt.Println(status.String())
 }
 
 func main() {
-	loop(5 * time.Second)
+	loop(1 * time.Second)
 }
