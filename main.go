@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/lack/waybar-nmvpn/pkg/nmvpn"
@@ -13,9 +14,11 @@ func loop(interval time.Duration) {
 	wb := waybar.NewUpdater()
 
 	for true {
+		names := []string{}
 		status := waybar.Status{
-			Text: "VPN",
+			Text: "",
 		}
+
 		vpns, err := nmvpn.GetVPNs()
 		if err == nil && len(vpns) > 0 {
 			active := false
@@ -29,11 +32,17 @@ func loop(interval time.Duration) {
 				status.Alt = "connected"
 				status.Class = []string{"connected"}
 			} else {
-				status.Alt = "disconnected"
-				status.Class = []string{"disconnected"}
+				break
 			}
+
 			status.Tooltip = ""
 			for _, v := range vpns {
+				if !v.Active {
+					continue
+				}
+
+				names = append(names, v.Name)
+
 				if status.Tooltip != "" {
 					status.Tooltip += "\n"
 				}
@@ -52,6 +61,9 @@ func loop(interval time.Duration) {
 			status.Class = []string{"unconfigured"}
 			status.Tooltip = "No VPN connections configured"
 		}
+
+		status.Text = strings.Join(names, " | ")
+
 		wb.Status <- &status
 		time.Sleep(interval)
 	}
